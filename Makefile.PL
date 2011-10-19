@@ -1,10 +1,10 @@
 use inc::Module::Install;
 use Module::Install::AuthorTests;
-use Module::Install::ReadmeMarkdownFromPod;
 
 name 'OrePAN';
 all_from 'orepan.pl';
-readme_markdown_from 'orepan.pl';
+abstract 'my own Perl Archive Network.';
+license 'perl';
 
 # OrePAN should not depend to any XS modules, since this is a utility for operating CPAN modules.
 # It should works with FatPacker.
