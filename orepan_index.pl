@@ -7,6 +7,7 @@ use lib 'lib';
 use 5.008001;
 use OrePAN::Package::Index;
 use OrePAN::Archive;
+use OrePAN::Package::Whois;
 
 use Carp ();
 use Pod::Usage qw/pod2usage/;
@@ -21,8 +22,10 @@ our $VERSION='0.01';
 
 GetOptions(
     'r|repository=s' => \my $repository, 
+    'h|help' => \my $help,
 );
-$repository or pod2usage();
+pod2usage(-verbose=>1) if $help;
+$repository or pod2usage(-verbose=>1);
 
 $repository = dir($repository);
 my $authordir = $repository->subdir('authors');
@@ -31,12 +34,17 @@ $repository->subdir('modules')->mkpath;
 my $pkg_file = $repository->file('modules', '02packages.details.txt.gz');
 my $index = OrePAN::Package::Index->new(filename => "$pkg_file");
 
+my $whois_file = $repository->file('authors', '00whois.xml');
+my $whois = OrePAN::Package::Whois->new(filename => "$whois_file");
+
 sub build_index {
     my $file = $_;
     return if ! -f $file;
     return if $file !~ m!(?:\.zip|\.tar|\.tar\.gz|\.tgz)$!i;
+
+    (my $parsed = $file) =~ s/^\Q$authordir\E\/id\///;
     
-    my $pauseid = [split /\//,$file]->[-2];
+    my $pauseid = [split /\//, $parsed]->[2];
 
     my $archive = OrePAN::Archive->new(filename => $file);
     infof("get package names of %s", $file);
@@ -45,17 +53,16 @@ sub build_index {
     # make index
     infof('make index');
     $index->add(
-        File::Spec->catfile(
-            substr( $pauseid, 0, 1 ), substr( $pauseid, 0, 2 ),
-            $pauseid, basename($file)
-        ),
+        $parsed,
         \%packages
     );
 
+    $whois->add(cpanid => $pauseid);
 }
 
 find({ wanted => \&build_index, no_chdir => 1 }, $authordir );
 $index->save();
+$whois->save();
 
 __END__
 
@@ -63,17 +70,45 @@ __END__
 
 =head1 NAME
 
-orepan_index.pl - index builder
+orepan_index.pl - yet another CPAN mirror aka DarkPAN index builder
 
 =head1 SYNOPSIS
 
-    % build_index.pl --repository=/path/to/repository
+    # make directory
+    % mkdir -p /path/to/repository/{modules,authors}
+    # copy CPAN mouldes to the directory
+    % cp MyModule-0.03.tar.gz /path/to/repository/authors/id/A/AB/ABC/
 
-    # and so...
+    # make index file
+    % orepan_index.pl --repository=/path/to/repository
+
+    # remove module and recreate index
+    % rm /path/to/repository/authors/id/A/AB/ABC/MyModule-0.04.tar.gz
+    % orepan_index.pl --repository=/path/to/repository
+
+    # and use it
     % cpanm --mirror-only --mirror=file:///path/to/repository Foo
 
 =head1 DESCRIPTION
 
+OrePAN is yet another CPAN mirror aka DarkPAN repository manager.
+
+orepan_index.pl is CPAN mirror aka DarkPAN index builder. 
+orepan_index.pl parses all tarballs in specified repository directory, and makes 02packages.txt.gz file.
+
+You can use the directory aka DarkPAN with `cpanm --mirror`.
+
+If you want to add other mouldes to repository in one command, you can use L<orepan.pl>
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<--repository>
+
+Set a directory that use as DarkPAN repository
+
+=back
 
 =head1 AUTHOR
 

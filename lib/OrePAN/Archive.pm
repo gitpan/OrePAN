@@ -123,7 +123,8 @@ sub _parse_version($) {
 
             # Copy from ExtUtils::MM_Unix
             my $eval = qq{
-                package ExtUtils::MakeMaker::_version;
+                package 
+                  ExtUtils::MakeMaker::_version;
                 no strict;
                 BEGIN { eval {
                     # Ensure any version() routine which might have leaked
@@ -143,7 +144,7 @@ sub _parse_version($) {
             };
             local $^W = 0;
             my $version = eval($eval);  ## no critic
-            warn "Could not eval '$eval' in $parsefile: $@" if $@;
+            warnf("Could not eval '$eval' in $parsefile: $@") if $@;
             if ( ! ref($version) ) {
                 $version = eval { version->new($version) };
             }
@@ -161,7 +162,7 @@ sub _parse_version($) {
     my $basename  = fileparse("$parsefile");
     $basename =~ s/\..+$//;
     my @candidates = sort { !$a->[1] <=> !$b->[1] }
-        grep { $_->[0] =~ m/$basename$/  } @pkgs;
+        grep { $_->[0] =~ m/($basename)$/ || $basename eq 'version' } @pkgs;
     return @{$candidates[0]} if @candidates;
     return;
 }
